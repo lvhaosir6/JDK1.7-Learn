@@ -151,6 +151,7 @@ public class HashMap<K,V>
     /**
      * The table, resized as necessary. Length MUST Always be a power of two.
      */
+    // 数组桶
     transient Entry<K,V>[] table = (Entry<K,V>[]) EMPTY_TABLE;
 
     /**
@@ -232,9 +233,9 @@ public class HashMap<K,V>
     }
 
     /**
-     * A randomizing value associated with this instance that is applied to
-     * hash code of keys to make hash collisions harder to find. If 0 then
-     * alternative hashing is disabled.
+     * 那么hashSeed有什么用？
+     * 在计算hash值的时候使用到了hashSeed，可以让hash算法更加复杂一点，所返回的hash值更分散一点。
+     * 如果hashSeed = 0，就表示hashSeed没有帮助你去复杂hash算法
      */
     transient int hashSeed = 0;
 
@@ -333,8 +334,11 @@ public class HashMap<K,V>
      * Initialize the hashing mask value. We defer initialization until we
      * really need it.
      */
+    // 根据当前的hashSeed和指定的capacity计算是否需要获取下一个随机的散列值种子
     final boolean initHashSeedAsNeeded(int capacity) {
+        // 哈希种子默认为0
         boolean currentAltHashing = hashSeed != 0;
+        // capacity数组容量大于jdk.map.althashing.threshold时才会返回true
         boolean useAltHashing = sun.misc.VM.isBooted() &&
                 (capacity >= Holder.ALTERNATIVE_HASHING_THRESHOLD);
         boolean switching = currentAltHashing ^ useAltHashing;
@@ -354,16 +358,15 @@ public class HashMap<K,V>
      * in lower bits. Note: Null keys always map to hash 0, thus index 0.
      */
     final int hash(Object k) {
+        // hashSeed默认为0，不为0时
         int h = hashSeed;
+        // hashSeed不为0时并且key类型为String时，使用更复杂的hash方式
         if (0 != h && k instanceof String) {
+            // 获取一个String的散列值
             return sun.misc.Hashing.stringHash32((String) k);
         }
-
         h ^= k.hashCode();
-
-        // This function ensures that hashCodes that differ only by
-        // constant multiples at each bit position have a bounded
-        // number of collisions (approximately 8 at default load factor).
+        // 进行扰动运算，让高位也参与运算，让分布更加散列，最终达到降低哈希冲突的目的
         h ^= (h >>> 20) ^ (h >>> 12);
         return h ^ (h >>> 7) ^ (h >>> 4);
     }
@@ -797,7 +800,7 @@ public class HashMap<K,V>
 
         return result;
     }
-
+    // 链表节点
     static class Entry<K,V> implements Map.Entry<K,V> {
         final K key;
         V value;
