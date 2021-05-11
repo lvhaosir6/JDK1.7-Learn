@@ -300,7 +300,8 @@ public class HashMap<K,V>
     }
 
     private static int roundUpToPowerOf2(int number) {
-        // assert number >= 0 : "number must be non-negative";
+        // 若容量超过了最大值，初始化容量设置为最大值
+        // 否则，设置为：>传入容量大小的最小的2的次幂
         return number >= MAXIMUM_CAPACITY
                 ? MAXIMUM_CAPACITY
                 : (number > 1) ? Integer.highestOneBit((number - 1) << 1) : 1;
@@ -310,11 +311,14 @@ public class HashMap<K,V>
      * Inflates the table.
      */
     private void inflateTable(int toSize) {
-        // Find a power of 2 >= toSize
+        // 将传入的容量大小转化为：传入容量大小的最小的2的次幂（向上舍入为2的幂）
+        // 即如果传入的是容量大小是19，那么转化后，初始化容量大小为32（即2的5次幂）
         int capacity = roundUpToPowerOf2(toSize);
-
+        // 重新计算阈值 threshold = 容量 * 加载因子
         threshold = (int) Math.min(capacity * loadFactor, MAXIMUM_CAPACITY + 1);
+        // 使用计算后的初始容量（已经是2的次幂）初始化数组table
         table = new Entry[capacity];
+        // 根据容量判断是否需要初始化hash因子
         initHashSeedAsNeeded(capacity);
     }
 
@@ -488,14 +492,17 @@ public class HashMap<K,V>
      */
     public V put(K key, V value) {
         if (table == EMPTY_TABLE) {
+            // 传入阈值，初始化桶
             inflateTable(threshold);
         }
+        // 对key为null做特殊处理
         if (key == null)
             return putForNullKey(value);
         int hash = hash(key);
         int i = indexFor(hash, table.length);
         for (Entry<K,V> e = table[i]; e != null; e = e.next) {
             Object k;
+            // 遍历该下标下的链表，如果hash值相同，key相同，则直接替换
             if (e.hash == hash && ((k = e.key) == key || key.equals(k))) {
                 V oldValue = e.value;
                 e.value = value;
@@ -505,6 +512,7 @@ public class HashMap<K,V>
         }
 
         modCount++;
+        // 新增节点
         addEntry(hash, key, value, i);
         return null;
     }
@@ -514,6 +522,7 @@ public class HashMap<K,V>
      */
     private V putForNullKey(V value) {
         for (Entry<K,V> e = table[0]; e != null; e = e.next) {
+            // 遍历数组的下标为0的链表，循环找key为null的键，如果找到则替换
             if (e.key == null) {
                 V oldValue = e.value;
                 e.value = value;
@@ -522,6 +531,7 @@ public class HashMap<K,V>
             }
         }
         modCount++;
+        // 直接执行添加操作key为null，hash值为0的节点，插入位置为0
         addEntry(0, null, value, 0);
         return null;
     }
@@ -878,12 +888,14 @@ public class HashMap<K,V>
      * Subclass overrides this to alter the behavior of put method.
      */
     void addEntry(int hash, K key, V value, int bucketIndex) {
+        // 插入前，先判断容量是否足够
+        // 若不足够，则进行扩容（2倍）、重新计算Hash值、重新计算存储数组下标
         if ((size >= threshold) && (null != table[bucketIndex])) {
             resize(2 * table.length);
             hash = (null != key) ? hash(key) : 0;
             bucketIndex = indexFor(hash, table.length);
         }
-
+        // 若容量足够，则创建1个新的数组元素（Entry）
         createEntry(hash, key, value, bucketIndex);
     }
 
@@ -896,7 +908,10 @@ public class HashMap<K,V>
      * clone, and readObject.
      */
     void createEntry(int hash, K key, V value, int bucketIndex) {
+        // 把table中该位置原来的Entry保存
         Entry<K,V> e = table[bucketIndex];
+        // table中该位置新建一个Entry：将原头结点位置（数组上）的键值对 放入到（链表）后1个节点中、将需插入的键值对 放入到头结点中（数组上）-> 从而形成链表
+        // 即 在插入元素时，是在链表头插入的，table中的每个位置永远只保存最新插入的Entry，旧的Entry则放入到链表中（即 解决Hash冲突）
         table[bucketIndex] = new Entry<>(hash, key, value, e);
         size++;
     }
